@@ -25,3 +25,8 @@ jobs:
 
     - name: Generate SBOM with Syft
       run: syft juiceshop -o table
+    - name: Upload SBOM Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom
+        path: sbom.json
