@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+
 jobs:
   build-scan:
     runs-on: ubuntu-latest
@@ -24,23 +25,22 @@ jobs:
 
     - name: Generate SBOM with Syft
       run: syft juiceshop -o json > sbom.json
+
     - name: Upload SBOM Artifact
       uses: actions/upload-artifact@v4
       with:
         name: sbom
         path: sbom.json
 
-
     - name: Install Semgrep
       run: |
         curl -sSfL https://semgrep.dev/install | sh
 
     - name: Run Semgrep scan for SaaS security
-      run: semgrep --config='auto' --strict --error 'saas-security' --json -o semgrep-results.json .
+      run: semgrep --config='auto' --strict --error 'saas-security' --sarif -o semgrep-results.sarif .
 
-    - name: Upload Semgrep Scan Results
+    - name: Upload Semgrep SARIF Results
       uses: actions/upload-artifact@v4
       with:
         name: semgrep-results
-        path: semgrep-results.json
-
+        path: semgrep-results.sarif
