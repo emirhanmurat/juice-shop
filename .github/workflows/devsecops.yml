@@ -46,7 +46,6 @@ jobs:
 
       - name: Install Semgrep via pip
         run: pip3 install semgrep
-        # no need for curl|sh, pip3 works out of the box on ubuntu-latest
 
       - name: Run Semgrep SaaS-security Scan
         run: |
@@ -57,3 +56,24 @@ jobs:
         with:
           name: semgrep-results
           path: semgrep-results.sarif
+
+  gitleaks-scan:
+    needs: [build-sbom, semgrep-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install GitLeaks
+        run: |
+          curl -sSL https://github.com/zricethezav/gitleaks/releases/download/v8.10.0/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
+          chmod +x /usr/local/bin/gitleaks
+
+      - name: Run GitLeaks Scan
+        run: gitleaks detect --source=. --report-format= sarif --report-path=gitleaks-report.sarif
+
+      - name: Upload GitLeaks SARIF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.sarif
