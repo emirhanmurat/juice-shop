@@ -3,8 +3,7 @@ name: JuiceShop DevSecOps Pipeline
 on:
   push:
     branches:
-      - main
-
+      - master
 jobs:
   build-scan:
     runs-on: ubuntu-latest
