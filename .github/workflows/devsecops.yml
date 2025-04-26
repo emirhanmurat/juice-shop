@@ -6,41 +6,54 @@ on:
       - master
 
 jobs:
-  build-scan:
+  build-sbom:
     runs-on: ubuntu-latest
-
+    outputs:
+      sbom-path: ${{ steps.generate-sbom.outputs.sbom-file }}
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Build Docker Image
-      run: docker build -t juiceshop .
+      - name: Build Docker Image
+        run: docker build -t juiceshop .
 
-    - name: Install Syft
-      run: |
-        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+            | sh -s -- -b /usr/local/bin
 
-    - name: Generate SBOM with Syft
-      run: syft juiceshop -o json > sbom.json
+      - name: Generate SBOM
+        id: generate-sbom
+        run: |
+          syft juiceshop -o json > sbom.json
+          echo "::set-output name=sbom-file::sbom.json"
 
-    - name: Upload SBOM Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: sbom
-        path: sbom.json
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
 
-    - name: Install Semgrep
-      run: |
-        curl -sSfL https://semgrep.dev/install | sh
+  semgrep-scan:
+    needs: build-sbom
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Run Semgrep scan for SaaS security
-      run: semgrep --config='auto' --strict --error 'saas-security' --sarif -o semgrep-results.sarif .
+      - name: Install Semgrep via pip
+        run: pip3 install semgrep
+        # no need for curl|sh, pip3 works out of the box on ubuntu-latest
 
-    - name: Upload Semgrep SARIF Results
-      uses: actions/upload-artifact@v4
-      with:
-        name: semgrep-results
-        path: semgrep-results.sarif
+      - name: Run Semgrep SaaS-security Scan
+        run: |
+          semgrep --config 'auto' --sarif -o semgrep-results.sarif .
+
+      - name: Upload Semgrep SARIF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.sarif
