@@ -64,20 +64,67 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install GitLeaks
-        run: |
-          # GitLeaks'ı doğru sürümle indir
-          curl -sSL https://github.com/zricethezav/gitleaks/releases/download/v8.10.0/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
-          chmod +x /usr/local/bin/gitleaks
-
-      - name: Verify GitLeaks installation
-        run: gitleaks --version
-
       - name: Run GitLeaks Scan
-        run: gitleaks detect --source=. --report-format=sarif --report-path=gitleaks-report.sarif
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --source=. --report-format=sarif --report-path=gitleaks-report.sarif
 
       - name: Upload GitLeaks SARIF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
           path: gitleaks-report.sarif
+
+  dast-scan:
+    needs: [gitleaks-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install OWASP ZAP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zaproxy
+
+      - name: Start OWASP ZAP
+        run: |
+          zaproxy -daemon -port 8080 &
+
+      - name: Run ZAP Scan
+        run: |
+          curl -s -o zap-report.xml http://localhost:8080/JSON/ascan/action/scan/?url=http://localhost:3000
+
+      - name: Download ZAP Report in XML Format
+        run: |
+          curl -s -o zap-report.xml http://localhost:8080/JSON/core/other/xmlreport/
+
+      - name: Upload ZAP Report Artifact (XML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-xml
+          path: zap-report.xml
+
+  dummy-deploy:
+    needs: [dast-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy Dummy Application (Simulated)
+        run: |
+          echo "Deploying dummy application..."
+          # Simulating the deployment with a simple log message
+          echo "Deployment successful!"
+      
+      - name: Verify Deployment (Dummy Step)
+        run: |
+          echo "Verifying dummy deployment..."
+          echo "Dummy deployment verification passed."
+
+      - name: Upload Dummy Deployment Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: dummy-deployment-log
+          path: deployment-log.txt
