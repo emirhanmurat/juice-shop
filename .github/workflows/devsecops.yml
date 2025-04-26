@@ -66,11 +66,15 @@ jobs:
 
       - name: Install GitLeaks
         run: |
+          # GitLeaks'ı doğru sürümle indir
           curl -sSL https://github.com/zricethezav/gitleaks/releases/download/v8.10.0/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
           chmod +x /usr/local/bin/gitleaks
 
+      - name: Verify GitLeaks installation
+        run: gitleaks --version
+
       - name: Run GitLeaks Scan
-        run: gitleaks detect --source=. --report-format= sarif --report-path=gitleaks-report.sarif
+        run: gitleaks detect --source=. --report-format=sarif --report-path=gitleaks-report.sarif
 
       - name: Upload GitLeaks SARIF Artifact
         uses: actions/upload-artifact@v4
